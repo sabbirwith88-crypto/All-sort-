@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Road Rush — Adrenaline Run | 3/6/9 → Double Adsgram</title>
+    <title>Road Rush — Nitro Adrenaline | Double Adsgram Everywhere</title>
     <!-- Adsgram SDK (ALL SORT block ID: int-24327) -->
     <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
     <!-- Monetag SDK (ALL SORT zone: 10869438) -->
     <script src='//libtl.com/sdk.js' data-zone='10869438' data-sdk='show_10869438'></script>
-    <!-- Adexora SDK (ALL SORT App ID: 2026) - used only for non-break levels -->
-    <script src="https://adexora.com/cdn/ads.js?id=2026"></script>
+    <!-- Adexora SDK removed as per requirement: now Adsgram replaces all Adexora slots -->
     <style>
         * {
             margin: 0;
@@ -360,8 +359,8 @@
     <div class="game-container">
         <div class="road-header">
             <div class="title">⚡ ROAD RUSH</div>
-            <div class="subtitle">Break Lv.3/6/9 → Double Adsgram (no Adexora)</div>
-            <div class="badge-pattern">🔥 3 Ads unlock | Lv.3,6,9: AdsGram→Monetag→AdsGram</div>
+            <div class="subtitle">Every Stage: Double Adsgram + Monetag</div>
+            <div class="badge-pattern">🔥 3 Ads per Stage | AdsGram → Monetag → AdsGram (Adexora replaced)</div>
         </div>
         <div class="road-levels" id="levelListContainer"></div>
         <div class="footer-note" style="display: flex; justify-content: center;">
@@ -381,7 +380,7 @@
         </div>
     </div>
 
-    <!-- Ad Modal (dynamic steps with break-level logic) -->
+    <!-- Ad Modal (dynamic steps, Adexora fully replaced by Adsgram) -->
     <div id="adModal" class="ad-modal">
         <div class="modal-card">
             <span class="close-modal-x" id="closeAdModalBtn">&times;</span>
@@ -423,7 +422,7 @@
         let currentLevelInFlow = null;
         let flowStep = 0;
         
-        // Ad controllers
+        // Adsgram controller (primary)
         let AdsGramController = null;
         try {
             if(window.Adsgram) AdsGramController = window.Adsgram.init({ blockId: "int-24327" });
@@ -436,7 +435,7 @@
             setTimeout(() => toast.style.opacity = '0', 1800);
         }
         
-        // Progress
+        // Progress mgmt
         function loadProgress() {
             const savedUnlocked = localStorage.getItem('roadrush_unlocked');
             const savedCompleted = localStorage.getItem('roadrush_completed');
@@ -451,6 +450,7 @@
             localStorage.setItem('roadrush_completed', JSON.stringify(completedLevels));
         }
         
+        // Render levels with unified ad description (no Adexora mention)
         function renderLevels() {
             const container = document.getElementById('levelListContainer');
             if(!container) return;
@@ -466,8 +466,8 @@
                 card.innerHTML = `
                     <div class="level-number">${lvl}</div>
                     <div class="level-info">
-                        <div class="level-name">STAGE ${lvl} · ${(lvl===3||lvl===6||lvl===9) ? '2x Adsgram' : 'Adexora final'}</div>
-                        <div class="level-requirement">🏁 5 tasks</div>
+                        <div class="level-name">STAGE ${lvl} · Triple Ad Flow</div>
+                        <div class="level-requirement">🏁 5 tasks | AdsGram x2 + Monetag</div>
                     </div>
                     <div class="level-status">${statusIcon}</div>
                 `;
@@ -478,7 +478,7 @@
             }
         }
         
-        // ========== AD FUNCTIONS (retry-only) ==========
+        // ========== AD FUNCTIONS (only Adsgram & Monetag, Adexora eliminated) ==========
         async function realAdsGram() {
             if(AdsGramController) {
                 try {
@@ -494,13 +494,8 @@
             }
             return false;
         }
-        async function realAdexora() {
-            if(typeof window.showAdexora === 'function') {
-                try { await window.showAdexora(); return true; } catch(e) { return false; }
-            }
-            return false;
-        }
         
+        // Retry-only modal for ad failures
         async function showAdWithRetryOnly(adName, showRealAdFn) {
             return new Promise((resolve) => {
                 const renderRetryUI = () => {
@@ -520,41 +515,20 @@
             });
         }
         
-        // Core ad flow respecting break levels (3,6,9)
-        function isBreakLevel(level) { return level === 3 || level === 6 || level === 9; }
-        
-        async function runCustomAdSequence(level) {
-            // Step 0: AdsGram
-            let success = await showAdWithRetryOnly("AdsGram (1/3)", realAdsGram);
-            if(!success) return false;
-            // Step 1: Monetag
-            success = await showAdWithRetryOnly("Monetag (2/3)", realMonetag);
-            if(!success) return false;
-            // Step 2: either Adexora (normal) or second AdsGram (break level)
-            if(isBreakLevel(level)) {
-                success = await showAdWithRetryOnly("AdsGram (3/3 - Bonus)", realAdsGram);
-                if(!success) return false;
-            } else {
-                success = await showAdWithRetryOnly("Adexora (3/3)", realAdexora);
-                if(!success) return false;
-            }
-            return true;
-        }
-        
-        // Modal step renderer (dynamic)
+        // MODAL STEP RENDERER (FULL ADSGRAM x2 + MONETAG, no Adexora)
         function renderModalStep() {
             const modalDynamicDiv = document.getElementById('modalDynamicContent');
             if(!modalDynamicDiv) return;
-            const isBreak = isBreakLevel(currentLevelInFlow);
+            
             if(flowStep === 0) {
                 modalDynamicDiv.innerHTML = `
                     <div><i class="fas fa-ad ad-icon-large"></i></div>
                     <h3 style="color:#FFD700;">AdsGram Ad (1/3)</h3>
                     <button id="showAdsGramBtn" class="btn-modal">📺 WATCH ADSGRAM</button>
-                    <p>Step 1/3</p>
+                    <p>Step 1/3 · Double Adsgram + Monetag</p>
                 `;
                 document.getElementById('showAdsGramBtn')?.addEventListener('click', async () => {
-                    const ok = await showAdWithRetryOnly("AdsGram", realAdsGram);
+                    const ok = await showAdWithRetryOnly("AdsGram (1st)", realAdsGram);
                     if(ok) { flowStep = 1; renderModalStep(); }
                 });
             } else if(flowStep === 1) {
@@ -562,24 +536,22 @@
                     <div><i class="fas fa-coins ad-icon-large" style="color:#FFD700;"></i></div>
                     <h3>Monetag Ad (2/3)</h3>
                     <button id="showMonetagBtn" class="btn-modal">🎬 SHOW MONETAG</button>
-                    <p>Step 2/3</p>
+                    <p>Step 2/3 · Required reward ad</p>
                 `;
                 document.getElementById('showMonetagBtn')?.addEventListener('click', async () => {
                     const ok = await showAdWithRetryOnly("Monetag", realMonetag);
                     if(ok) { flowStep = 2; renderModalStep(); }
                 });
             } else if(flowStep === 2) {
-                const thirdAdName = isBreak ? "AdsGram (Bonus)" : "Adexora";
-                const thirdIcon = isBreak ? "🔄" : "📊";
+                // Third step: always AdsGram (replaces former Adexora slot)
                 modalDynamicDiv.innerHTML = `
-                    <div><i class="fas ${isBreak ? 'fa-sync-alt' : 'fa-chart-line'} ad-icon-large"></i></div>
-                    <h3>${thirdAdName} Ad (3/3)</h3>
-                    <button id="showThirdBtn" class="btn-modal">▶️ SHOW ${isBreak ? 'ADSGRAM AGAIN' : 'ADEXORA'}</button>
-                    <p>Step 3/3 → Then race</p>
+                    <div><i class="fas fa-sync-alt ad-icon-large" style="color:#FFA500;"></i></div>
+                    <h3>🔥 Second AdsGram (3/3)</h3>
+                    <button id="showThirdAdsGramBtn" class="btn-modal">▶️ WATCH ADSGRAM (FINAL)</button>
+                    <p>Step 3/3 · Double Adsgram confirmed → Race start</p>
                 `;
-                const thirdFn = isBreak ? realAdsGram : realAdexora;
-                document.getElementById('showThirdBtn')?.addEventListener('click', async () => {
-                    const ok = await showAdWithRetryOnly(thirdAdName, thirdFn);
+                document.getElementById('showThirdAdsGramBtn')?.addEventListener('click', async () => {
+                    const ok = await showAdWithRetryOnly("AdsGram (2nd)", realAdsGram);
                     if(ok) { flowStep = 3; renderModalStep(); }
                 });
             } else if(flowStep === 3) {
@@ -613,7 +585,7 @@
             document.getElementById('adModal').classList.add('active');
         }
         
-        // Gameplay after ads
+        // Gameplay after mandatory ads
         function startGameplayAfterAds(level) {
             activeGameLevel = level;
             buttonClickState = [false, false, false, false, false];
@@ -691,7 +663,7 @@
         function copyRewardCode() {
             const code = document.getElementById('rewardCodeDisplay').textContent;
             navigator.clipboard.writeText(code);
-            showToast("🏆 Code copied!");
+            showToast("🏆 Victory code copied!");
         }
         
         function fullReset() {
@@ -703,20 +675,20 @@
             document.getElementById('levelCompleteScreen').style.display = 'none';
             document.getElementById('rewardScreen').style.display = 'none';
             if(adFlowActive) closeAdModal();
-            showToast("Game reset! Stage 1 unlocked.");
+            showToast("Game reset! Stage 1 unlocked. (Adsgram only flow)");
         }
         
         // Event binding
         function bindEvents() {
             document.getElementById('nextLevelBtnFromComplete').onclick = () => {
                 document.getElementById('levelCompleteScreen').style.display = 'none';
-                showToast("Tap a stage to play");
+                showToast("Select next stage from the map");
             };
             document.getElementById('backToRoadCompleteBtn').onclick = () => document.getElementById('levelCompleteScreen').style.display = 'none';
-            document.getElementById('resetProgressBtn').onclick = () => { if(confirm("Reset all progress?")) fullReset(); };
+            document.getElementById('resetProgressBtn').onclick = () => { if(confirm("Reset all progress? Ads flow will restart from Stage 1.")) fullReset(); };
             document.getElementById('resetFromRewardBtn').onclick = () => { copyRewardCode(); fullReset(); };
             document.getElementById('exitGameBtn').onclick = () => document.getElementById('gamePanel').style.display = 'none';
-            document.getElementById('closeAdModalBtn').addEventListener('click', () => { closeAdModal(); showToast("Ad flow cancelled."); });
+            document.getElementById('closeAdModalBtn').addEventListener('click', () => { closeAdModal(); showToast("Ad flow cancelled. Restart level to race."); });
             const modalBg = document.getElementById('adModal');
             modalBg.addEventListener('click', (e) => { if(e.target === modalBg) { closeAdModal(); showToast("Cancelled."); } });
         }
