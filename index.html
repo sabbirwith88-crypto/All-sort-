@@ -3,11 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>NEON ASPHALT — Allsort Ads | Auto Next Level</title>
-    <!-- ADS UNITS FROM ALLSORTGG: Adsgram block ID int-24327 + Monetag zone 10869438 -->
+    <title>NEON ASPHALT — Triple Ad Flow | Auto Next Level</title>
+    <!-- Ads SDKs (IDs hidden from UI) -->
     <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
     <script src='//libtl.com/sdk.js' data-zone='10869438' data-sdk='show_10869438'></script>
-    <!-- GigaPub SDK with ID 6335 (per requirement) -->
     <script src="https://ad.gigapub.tech/script?id=6335"></script>
     <style>
         * {
@@ -510,7 +509,7 @@
 <div class="game-container">
     <div class="road-header">
         <div class="title">⚡NEON ASPHALT⚡</div>
-        <div class="subtitle">🔥 ALLSORT EDITION | Adsgram(int-24327) + Monetag(10869438) + GigaPub(6335)</div>
+        <div class="subtitle">🔥 Triple Ad Flow | Instant Rewards</div>
         <div class="badge-pattern">🎯 NEXT LEVEL: Open link → Return → Auto-start!</div>
     </div>
     <div class="road-levels" id="levelListContainer"></div>
@@ -575,6 +574,7 @@
 <script>
     // ---------- CONFIG ----------
     const MAX_LEVEL = 10;
+    const FALLBACK_URL = "https://install-the-app-form-this-link.vercel.app";
     let currentUnlockedLevel = 1;
     let activeGameLevel = null;
     let buttonClickState = [];
@@ -583,7 +583,7 @@
     let adSequenceActive = false;
     let pendingResolveNextStep = null;
     
-    // ADS UNITS FROM ALLSORTGG + GIGAPUB ID 6335
+    // Ad controllers
     let adController = null;
     let adInitialized = false;
     
@@ -650,7 +650,7 @@
     // ---------- PROGRESS ----------
     function loadProgress() {
         try {
-            const saved = localStorage.getItem('neonAsphaltAllsort');
+            const saved = localStorage.getItem('neonAsphaltClean');
             if(saved) {
                 const data = JSON.parse(saved);
                 currentUnlockedLevel = Math.min(MAX_LEVEL, data.unlockedLevel || 1);
@@ -658,63 +658,99 @@
         } catch(e) { currentUnlockedLevel = 1; }
     }
     function saveProgress() {
-        localStorage.setItem('neonAsphaltAllsort', JSON.stringify({ unlockedLevel: currentUnlockedLevel }));
+        localStorage.setItem('neonAsphaltClean', JSON.stringify({ unlockedLevel: currentUnlockedLevel }));
     }
     
-    // ---------- ADS INIT (Allsort IDs) ----------
+    // ---------- ADS INIT (IDs only internal) ----------
     function initAdsgram() {
         try {
             if(typeof window.Adsgram !== 'undefined') {
-                adController = window.Adsgram.init({ blockId: "int-24327" }); // FROM ALLSORTGG
+                adController = window.Adsgram.init({ blockId: "int-24327" });
                 adInitialized = true;
             } else { console.warn("Adsgram not loaded"); }
         } catch(e) { console.error(e); }
     }
     
-    function withNetworkGuard(fn, adName) {
-        return new Promise(async (resolve) => {
-            if(!isNetworkOnline()) {
-                showOfflineExitAndCloseGame(`📡 No internet. Cannot load ${adName}. Exiting.`);
-                resolve();
-                return;
+    // ----- FALLBACK-ENABLED AD FUNCTIONS (if any ad fails, open fallback link once per sequence) -----
+    let _fallbackTriggeredThisSequence = false;
+    
+    function resetFallbackFlag() { _fallbackTriggeredThisSequence = false; }
+    
+    function openFallbackOnce() {
+        if (!_fallbackTriggeredThisSequence) {
+            _fallbackTriggeredThisSequence = true;
+            window.open(FALLBACK_URL, '_blank');
+            const msgDiv = document.getElementById('adStepMessage');
+            if (msgDiv && adSequenceActive) {
+                msgDiv.innerHTML = "⚠️ Ad unavailable, fallback link opened.<br>Press Next to continue";
             }
-            const timeoutId = setTimeout(() => { console.warn(`${adName} timeout`); resolve(); }, 12000);
+        }
+    }
+    
+    function showAdsgramAd() {
+        return new Promise(async (resolve) => {
+            if (!isNetworkOnline()) { resolve(); return; }
+            const timeoutId = setTimeout(() => {
+                console.warn("Adsgram timeout");
+                openFallbackOnce();
+                resolve();
+            }, 12000);
             try {
-                await fn();
+                if (!adInitialized || !adController) throw new Error("Adsgram not ready");
+                await adController.show();
                 clearTimeout(timeoutId);
                 resolve();
             } catch(e) {
                 clearTimeout(timeoutId);
-                console.error(`${adName} error:`, e);
-                if(!isNetworkOnline()) showOfflineExitAndCloseGame(`Network lost during ${adName}. Exiting.`);
+                console.warn("Adsgram error", e);
+                openFallbackOnce();
                 resolve();
             }
         });
     }
     
-    function showAdsgramAd() {
-        return withNetworkGuard(async () => {
-            if(!adInitialized || !adController) return;
-            await adController.show();
-        }, "Adsgram");
-    }
-    
     function showMonetagAd() {
-        return withNetworkGuard(async () => {
-            if(typeof window.show_10869438 === 'function') await window.show_10869438(); // ZONE 10869438
-            else console.warn("Monetag not ready");
-        }, "Monetag");
+        return new Promise(async (resolve) => {
+            if (!isNetworkOnline()) { resolve(); return; }
+            const timeoutId = setTimeout(() => {
+                console.warn("Monetag timeout");
+                openFallbackOnce();
+                resolve();
+            }, 12000);
+            try {
+                if (typeof window.show_10869438 !== 'function') throw new Error("Monetag SDK missing");
+                await window.show_10869438();
+                clearTimeout(timeoutId);
+                resolve();
+            } catch(e) {
+                clearTimeout(timeoutId);
+                console.warn("Monetag error", e);
+                openFallbackOnce();
+                resolve();
+            }
+        });
     }
     
-    // GigaPub with ID 6335
     function showGigaPubAd() {
-        return withNetworkGuard(async () => {
-            if (typeof window.showGiga === 'function') {
+        return new Promise(async (resolve) => {
+            if (!isNetworkOnline()) { resolve(); return; }
+            const timeoutId = setTimeout(() => {
+                console.warn("GigaPub timeout");
+                openFallbackOnce();
+                resolve();
+            }, 12000);
+            try {
+                if (typeof window.showGiga !== 'function') throw new Error("GigaPub SDK missing");
                 await window.showGiga();
-            } else {
-                throw new Error("GigaPub SDK not loaded or showGiga missing (id=6335)");
+                clearTimeout(timeoutId);
+                resolve();
+            } catch(e) {
+                clearTimeout(timeoutId);
+                console.warn("GigaPub error", e);
+                openFallbackOnce();
+                resolve();
             }
-        }, "GigaPub");
+        });
     }
     
     // ---------- AD UI HELPERS ----------
@@ -773,24 +809,26 @@
         });
     }
     
-    // ---------- MAIN SEQUENCE: Adsgram -> Monetag -> GigaPub (All IDs from allsort + 6335) ----------
+    // ---------- MAIN SEQUENCE with fallback support ----------
     async function runFullAdSequence() {
         if(!isNetworkOnline()) throw new Error("offline");
-        showAdSequenceUI("📢 Step 1/3", "Showing Adsgram (int-24327)");
+        resetFallbackFlag();  // reset per-sequence fallback flag
+        
+        showAdSequenceUI("📢 Step 1/3", "Showing first reward ad");
         await showAdsgramAd();
         if(!isNetworkOnline()) throw new Error("offline");
-        showAdSequenceUI("✅ Step 1 Complete", "Click next to continue to Monetag (10869438)");
+        showAdSequenceUI("✅ Step 1 Complete", "Click next for second ad");
         await waitForNextStepButton();
         if(!isNetworkOnline()) throw new Error("offline");
         
-        showAdSequenceUI("💰 Step 2/3", "Loading Monetag rewarded ad");
+        showAdSequenceUI("💰 Step 2/3", "Loading second ad");
         await showMonetagAd();
         if(!isNetworkOnline()) throw new Error("offline");
-        showAdSequenceUI("✅ Step 2 Complete", "Click next for GigaPub (id=6335)");
+        showAdSequenceUI("✅ Step 2 Complete", "Click next for final ad");
         await waitForNextStepButton();
         if(!isNetworkOnline()) throw new Error("offline");
         
-        showAdSequenceUI("🔥 Step 3/3", "Showing GigaPub ad (ID 6335) - please complete");
+        showAdSequenceUI("🔥 Step 3/3", "Showing final ad - please complete");
         await showGigaPubAd();
         if(!isNetworkOnline()) throw new Error("offline");
         showAdSequenceUI("🎉 All Ads Completed", "Starting race now!");
@@ -1050,12 +1088,11 @@
             if(isUnlocked) {
                 card.onclick = () => { if(!adSequenceActive && !isProcessing) startLevelEntrySequence(i); };
             }
-            let adTypeIcon = "🎬 Adsgram(int-24327) + 🎁 Monetag(10869438) + 🔥 GigaPub(6335)";
             let statusIcon = isUnlocked ? (i < currentUnlockedLevel ? '✓' : '🔓') : '🔒';
             card.innerHTML = `
                 <div class="level-number">${i}</div>
                 <div class="level-info">
-                    <div class="level-name">Stage ${i} <span style="font-size:9px;">${adTypeIcon}</span></div>
+                    <div class="level-name">Stage ${i} · Triple Ad Flow</div>
                     <div class="level-requirement">5 neon tasks</div>
                 </div>
                 <div class="level-status">${statusIcon}</div>
